@@ -1,0 +1,150 @@
+---
+title: "Jeferson Dionei Sehnem"
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-01-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importando pacotes
+```{r packages, include=TRUE, warning=FALSE, message=FALSE}
+#pacotes/dependÃªncias
+library(magrittr)       # CRAN v2.0.2
+library(readr)          # CRAN v2.1.2
+library(lubridate)      # CRAN v1.8.0
+library(dplyr)          # CRAN v1.0.8
+library(purrr)          # CRAN v0.3.4
+library(GetBCBData)     # CRAN v0.6
+library(ipeadatar)      # CRAN v0.1.6
+library(sidrar)         # CRAN v0.2.7
+library(gtrendsR)       # CRAN v1.5.0
+library(rbcb)           # CRAN v0.1.8
+library(tidyr)          # CRAN v1.2.0
+library(tsibble)        # CRAN v1.1.1
+library(stringr)        # CRAN v1.4.0
+library(forecast)       # CRAN v8.16
+library(timetk)         # CRAN v2.7.0
+library(caret)          # CRAN v6.0-91
+library(glmnet)         # CRAN v4.1-4
+library(plotly)         # CRAN v4.10.0
+library(ggplot2)        # CRAN v3.3.5
+library(feasts)         # CRAN v0.2.2
+library(fabletools)     # CRAN v0.3.2
+library(scales)         # CRAN v1.1.1
+library(ggtext)         # CRAN v0.1.1
+# Testado nas versÃµes R: 3.6.3 / 4.0.5 / 4.1.2 / 4.1.3 e 4.2.0
+library(purrr)
+library(readr)
+library(latex2exp)
+library(ggplot2)
+library(latex2exp)
+library(tinytex)
+library(latexpdf)
+library(ggplot2)
+library(GGally)
+##
+
+
+##eSSE COMANDO RETIRA A NOTACAO CIENTIFICA
+options(scipen = 999)
+library(tsibble)
+library(tsibbledata)
+
+
+```
+## 1
+```{r}
+#Escreva uma função para calcular a média e o desvio padrão de uma série temporal e aplique-a aos PBSdados
+calculo_media_desvio <-function(dados){
+  media = sum(PBS$Cost)/length(PBS$Cost)
+  desvio = sd(PBS$Cost)
+  return(
+         list("media" = media, "desvio" = desvio))
+  }
+
+calculo_media_desvio(PBS$Cost)
+
+#Trace a série com a média mais alta e a série com o desvio padrão mais  baixo
+PBS%>%
+  dplyr::select(Cost,Scripts)%>%
+  summarise(mean_cost = mean(c(Cost)),desvio_cost = sd(c(Cost)))%>%
+  autoplot(mean_cost)
+
+
+```
+
+##
+```{r}
+PBS%>%
+  ggplot(aes(x=Month))+
+  geom_line(aes(y=Cost))
+
+```
+
+
+##2
+```{r}
+#Use GGally::ggpairs()para examinar os relacionamentos entre os recursos baseados em STL para a série de feriados nos tourismdados. Mudança seasonal_peak_yeare seasonal_trough_yearpara #fatores, conforme mostrado na Figura 4.3 . Qual é o trimestre de pico para feriados em cada estado?
+tourism %>%
+  features(Trips, feat_stl) %>%
+  ggplot(aes(x = trend_strength, y = seasonal_strength_year,
+             col = Purpose)) +
+  geom_point() +
+  facet_wrap(vars(State))
+
+```
+
+```{r}
+tourism_features <- tourism %>%
+  features(Trips, feature_set(pkgs = "feasts"))
+tourism_features
+
+```
+
+```{r warning=FALSE}
+
+library(glue)
+tourism_features %>%
+  select_at(vars(contains("season"), Purpose)) %>%
+  mutate(
+  seasonal_peak_year = seasonal_peak_year +
+  4*(seasonal_peak_year==0),
+  seasonal_trough_year = seasonal_trough_year +
+  4*(seasonal_trough_year==0),
+  seasonal_peak_year = glue("Q{seasonal_peak_year}"),
+  seasonal_trough_year = glue("Q{seasonal_trough_year}"),
+  ) %>%
+  GGally::ggpairs(mapping = aes(colour = Purpose))
+
+```
+
+##3
+```{r}
+##Use uma abordagem baseada em recursos para procurar séries periféricas nos PBSdados. O que há de incomum nas séries que você identifica como “outliers”.
+PBS
+PBS_features <- PBS %>%
+  features(Cost, feature_set(pkgs = "feasts"))
+tourism_features
+
+
+```
+```{r warning=FALSE}
+##Use uma abordagem baseada em recursos para procurar séries periféricas nos PBSdados. O que há de incomum nas séries que você identifica como “outliers”.
+PBS_features %>%
+  select_at(vars(contains("season"), Type)) %>%
+  mutate(
+  seasonal_peak_year = seasonal_peak_year +
+  4*(seasonal_peak_year==0),
+  seasonal_trough_year = seasonal_trough_year +
+  4*(seasonal_trough_year==0),
+  seasonal_peak_year = glue("Q{seasonal_peak_year}"),
+  seasonal_trough_year = glue("Q{seasonal_trough_year}"),
+  ) %>%
+  GGally::ggpairs(mapping = aes(colour = Type))
+
+
+```

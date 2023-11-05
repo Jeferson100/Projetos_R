@@ -1,0 +1,321 @@
+---
+title: "Capitulo 9"
+author: "Jeferson"
+date: "2023-03-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r, include=FALSE}
+#pacotes/dependÃªncias
+library(magrittr)       # CRAN v2.0.2
+library(readr)          # CRAN v2.1.2
+library(lubridate)      # CRAN v1.8.0
+library(dplyr)          # CRAN v1.0.8
+library(purrr)          # CRAN v0.3.4
+library(GetBCBData)     # CRAN v0.6
+library(ipeadatar)      # CRAN v0.1.6
+library(sidrar)         # CRAN v0.2.7
+library(gtrendsR)       # CRAN v1.5.0
+library(rbcb)           # CRAN v0.1.8
+library(tidyr)          # CRAN v1.2.0
+library(tsibble)        # CRAN v1.1.1
+library(stringr)        # CRAN v1.4.0
+library(forecast)       # CRAN v8.16
+library(timetk)         # CRAN v2.7.0
+library(caret)          # CRAN v6.0-91
+library(glmnet)         # CRAN v4.1-4
+library(plotly)         # CRAN v4.10.0
+library(ggplot2)        # CRAN v3.3.5
+library(feasts)         # CRAN v0.2.2
+library(fabletools)     # CRAN v0.3.2
+library(scales)         # CRAN v1.1.1
+library(ggtext)         # CRAN v0.1.1
+# Testado nas versÃµes R: 3.6.3 / 4.0.5 / 4.1.2 / 4.1.3 e 4.2.0
+library(purrr)
+library(readr)
+library(latex2exp)
+library(ggplot2)
+library(latex2exp)
+library(tinytex)
+library(latexpdf)
+library(ggplot2)
+library(GGally)
+library(forecast)
+##
+library(fable)
+library(forecast)
+library(fabletools)
+library(fpp3)
+
+##eSSE COMANDO RETIRA A NOTACAO CIENTIFICA
+options(scipen = 999)
+library(tsibble)
+```
+
+```{r}
+#2)Um exemplo clássico de série não estacionária são os preços das ações. Trace os preços diários de fechamento das ações da Amazon (contidos em gafa_stock), juntamente com o ACF e o PACF. Explique como cada gráfico mostra que a série não é estacionária e deve ser diferenciada.
+
+unique(gafa_stock$Symbol)
+
+amazom <-gafa_stock%>%
+  filter(Symbol == 'AMZN')%>%
+  select(Close)
+
+amazom%>%
+  ggplot(aes(Date, Close))+
+  geom_line()
+
+amazom%>%
+  ACF(Close)%>%
+  autoplot()
+amazom%>%
+  ACF(difference(Close))%>%
+  autoplot()
+
+amazom%>%
+  PACF(Close)%>%
+  autoplot()
+
+amazom%>%
+  PACF(difference(Close))%>%
+  autoplot()
+
+```
+
+```{r}
+#3)Para as séries a seguir, encontre uma transformação Box-Cox apropriada e uma ordem de diferenciação para obter dados estacionários.
+#a)PIB turco de global_economy.
+
+pib <-global_economy%>%
+  filter(Country == 'Turkey')
+#%>%select(GDP)
+
+pib <-pib%>%
+  mutate(diff_GDP = difference(GDP))
+
+pib%>%
+  ggplot()+
+  geom_line(aes(Year,diff_GDP))+
+  geom_line(aes(Year,GDP))
+
+pib_transformado<-pib%>%
+  transmute(
+    GDP = GDP,
+    Log_sales = log(GDP),
+    diferenca = difference(GDP),
+    Annual_change_log_sales = difference(log(GDP), 12),
+    Doubly_differenced_log_sales =
+                     difference(difference(log(GDP), 12), 1)
+  )
+
+pib_transformado%>%
+  ggplot() +
+  geom_line(aes(x = Year, y = GDP)) +
+  geom_line(aes(x = Year, y = Log_sales))+
+  geom_line(aes(x = Year, y = diferenca))+
+  geom_line(aes(x = Year, y = Annual_change_log_sales))+
+  geom_line(aes(x = Year, y = Doubly_differenced_log_sales))
+
+
+pib_transformado%>% ACF(GDP) %>%
+  autoplot() + labs(subtitle = "GDP sem mudanca")
+
+pib_transformado%>% ACF(Log_sales) %>%
+  autoplot() + labs(subtitle = "GDP com mudanca log")
+
+pib_transformado%>% ACF(diferenca) %>%
+  autoplot() + labs(subtitle = "GDP com diferenca")
+
+pib_transformado%>% ACF(Annual_change_log_sales) %>%
+  autoplot() + labs(subtitle = "GDP com mudanca anual")
+
+pib_transformado%>% ACF(Doubly_differenced_log_sales) %>%
+  autoplot() + labs(subtitle = "GDP com mudanca dupla diferenca")
+```
+
+
+```{r pressure, echo=FALSE}
+#b)Preços de alojamento no estado da Tasmânia a partir de aus_accommodation.
+
+alojamento <-aus_accommodation%>%
+  filter(State == 'Tasmania')%>%
+  select(Takings)
+
+alojamento_transformado<-alojamento%>%
+  transmute(
+    Takings = Takings,
+    Log_Takings = log(Takings),
+    diferenca = difference(Takings),
+    Annual_change_log_Takings = difference(log(Takings), 12),
+    Doubly_differenced_log_Takings =
+                     difference(difference(log(Takings), 12), 1)
+  )
+
+ggplot(alojamento_transformado, aes(x = Date)) +
+  geom_line(aes(y = Takings, color = "Takings")) +
+  geom_line(aes(y = Log_Takings, color = "Log Takings")) +
+  geom_line(aes(y = diferenca, color = "Diferenca")) +
+  geom_line(aes(y = Annual_change_log_Takings, color = "Annual Change Log Takings")) +
+  geom_line(aes(y = Doubly_differenced_log_Takings, color = "Doubly Differenced Log Takings")) +
+  scale_color_manual(values = c("Takings" = "blue",
+                                "Log Takings" = "red",
+                                "Diferenca" = "green",
+                                "Annual Change Log Takings" = "purple",
+                                "Doubly Differenced Log Takings" = "orange")) +
+  labs(color = "Variáveis") # Define o nome da legenda
+
+
+alojamento_transformado%>% ACF(Takings) %>%
+  autoplot() + labs(subtitle = "Takings sem mudanca")
+
+alojamento_transformado%>% ACF(Log_Takings) %>%
+  autoplot() + labs(subtitle = "Takings com mudanca log")
+
+alojamento_transformado%>% ACF(diferenca) %>%
+  autoplot() + labs(subtitle = "Takings com diferenca")
+
+alojamento_transformado%>% ACF(Annual_change_log_Takings) %>%
+  autoplot() + labs(subtitle = "Takings com mudanca anual")
+
+alojamento_transformado%>% ACF(Doubly_differenced_log_Takings) %>%
+  autoplot() + labs(subtitle = "Takings com mudanca dupla diferenca")
+
+```
+```{r}
+#c)Vendas mensais a partir de souvenirs.
+souvenirs
+
+vendas_transformado<-souvenirs%>%
+  transmute(
+    Sales = Sales,
+    Log_Sales = log(Sales),
+    diferenca = difference(Sales),
+    Annual_change_log_Sales = difference(log(Sales), 12),
+    Doubly_differenced_log_Sales =
+                     difference(difference(log(Sales), 12), 1)
+  )
+
+ggplot(vendas_transformado, aes(x = Month)) +
+  geom_line(aes(y = Sales, color = "Sales")) +
+  geom_line(aes(y = Log_Sales, color = "Log Sales")) +
+  geom_line(aes(y = diferenca, color = "Sales")) +
+  geom_line(aes(y = Annual_change_log_Sales, color = "Annual Change Log Sales")) +
+  geom_line(aes(y = Doubly_differenced_log_Sales, color = "Doubly Differenced Log Sales")) +
+  scale_color_manual(values = c("Sales" = "blue",
+                                "Log Sales" = "red",
+                                "Diferenca" = "green",
+                                "Annual Change Log Sales" = "purple",
+                                "Doubly Differenced Log Sales" = "orange")) +
+  labs(color = "Variáveis") # Define o nome da legenda
+
+vendas_transformado%>% ACF(Sales) %>%
+  autoplot() + labs(subtitle = "Sales sem mudanca")
+
+vendas_transformado%>% ACF(Log_Sales) %>%
+  autoplot() + labs(subtitle = "Sales com mudanca log")
+
+vendas_transformado%>% ACF(diferenca) %>%
+  autoplot() + labs(subtitle = "Sales com diferenca")
+
+vendas_transformado%>% ACF(Annual_change_log_Sales) %>%
+  autoplot() + labs(subtitle = "Sales com mudanca anual")
+
+vendas_transformado%>% ACF(Doubly_differenced_log_Sales) %>%
+  autoplot() + labs(subtitle = "Sales com mudanca dupla diferenca")
+```
+
+
+```{r}
+#6)Simule e plote alguns dados de modelos ARIMA simples
+
+
+#a)Use o seguinte código R para gerar dados de um modelo AR(1) com ϕ1 = 0,6 e σ2 = 1. O processo começa com y 1 = 0.
+
+y <- numeric(100)
+e <- rnorm(100)
+mat <- matrix(nrow = 100, ncol = 10) # matriz vazia com 100 linhas e 10 colunas
+for (j in seq(from = 0.1, to = 1, by = 0.1)) {
+  for (i in 2:100) {
+    y[i] <- 0.6 * y[i-1] + e[i]
+  }
+  col_idx <- round(j*10) # determina o índice da coluna correspondente a j
+  mat[, col_idx] <- y # preenche a coluna correspondente com os valores de y
+}
+
+idx = seq_len(100)
+
+df <- data.frame(idx = idx, mat)
+mat_tsibble <- tsibble(df, index = idx)
+
+
+ggplot(mat_tsibble, aes(x = idx)) +
+  geom_line(aes(y = X1, color = "X1")) +
+  geom_line(aes(y = X2, color = "X2")) +
+  geom_line(aes(y = X3, color = "X3")) +
+  geom_line(aes(y = X4, color = "X4")) +
+  geom_line(aes(y = X5, color = "X5")) +
+  scale_color_manual(values = c("X1" = "blue",
+                                "X2" = "red",
+                                "X3" = "green",
+                                "X4" = "purple",
+                                "X5" = "orange")) +
+  labs(color = "Variáveis") # Define o nome da legenda
+
+
+
+```
+
+
+```{r}
+#7)Considere aus_airpassengers, o número total de passageiros (em milhões) das transportadoras aéreas australianas no período 1970-2011.
+
+pasageiros_70_11 <-aus_airpassengers%>%
+  filter(Year <= 2011)
+
+```
+
+```{r}
+#a)Use ARIMA()para encontrar um modelo ARIMA apropriado. Qual modelo foi selecionado. Verifique se os resíduos se parecem com ruído branco. Traçar previsões para os próximos 10 períodos.
+
+arima_pass <-pasageiros_70_11%>%
+  model(ARIMA(Passengers))
+
+arima_pass%>%
+  forecast(h=10)%>%
+  autoplot(pasageiros_70_11)
+
+predicao <-arima_pass%>%
+  forecast(h=10)
+
+predicao$.mean
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+#c) Faça previsões de um modelo ARIMA(0,1,0) com desvio e compare-as com a parte a.
+
+arima_001__pass <-pasageiros_70_11%>%
+  model(ARIMA(Passengers ~ pdq(0,1,0)))
+
+arima_001__pass%>%
+  forecast(h=10)%>%
+  autoplot(pasageiros_70_11)
+
+
+
+```
+```{r}
+
+```

@@ -1,0 +1,328 @@
+---
+title: "Capitulo_8"
+author: "Jeferson"
+date: "2023-03-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+#pacotes/dependÃªncias
+library(magrittr)       # CRAN v2.0.2
+library(readr)          # CRAN v2.1.2
+library(lubridate)      # CRAN v1.8.0
+library(dplyr)          # CRAN v1.0.8
+library(purrr)          # CRAN v0.3.4
+library(GetBCBData)     # CRAN v0.6
+library(ipeadatar)      # CRAN v0.1.6
+library(sidrar)         # CRAN v0.2.7
+library(gtrendsR)       # CRAN v1.5.0
+library(rbcb)           # CRAN v0.1.8
+library(tidyr)          # CRAN v1.2.0
+library(tsibble)        # CRAN v1.1.1
+library(stringr)        # CRAN v1.4.0
+library(forecast)       # CRAN v8.16
+library(timetk)         # CRAN v2.7.0
+library(caret)          # CRAN v6.0-91
+library(glmnet)         # CRAN v4.1-4
+library(plotly)         # CRAN v4.10.0
+library(ggplot2)        # CRAN v3.3.5
+library(feasts)         # CRAN v0.2.2
+library(fabletools)     # CRAN v0.3.2
+library(scales)         # CRAN v1.1.1
+library(ggtext)         # CRAN v0.1.1
+# Testado nas versÃµes R: 3.6.3 / 4.0.5 / 4.1.2 / 4.1.3 e 4.2.0
+library(purrr)
+library(readr)
+library(latex2exp)
+library(ggplot2)
+library(latex2exp)
+library(tinytex)
+library(latexpdf)
+library(ggplot2)
+library(GGally)
+library(forecast)
+##
+library(fable)
+library(forecast)
+library(fabletools)
+library(fpp3)
+
+##eSSE COMANDO RETIRA A NOTACAO CIENTIFICA
+options(scipen = 999)
+library(tsibble)
+```
+
+##1)Considere o número de porcos abatidos em Victoria, disponível no aus_livestockconjunto de dados.
+
+```{r}
+
+unique(aus_livestock$Animal)
+unique(aus_livestock$State)
+vict <-aus_livestock%>%
+  filter(Animal == 'Pigs',State == 'Victoria')
+#a)Use a ETS()função para estimar o modelo equivalente para suavização exponencial simples. Encontre os valores ótimos de α e ℓ0 , e gerar previsões para os próximos quatro meses.
+
+modelo <- vict%>%
+  model(ETS(Count))
+
+modelo%>%
+  report()
+components(modelo)%>%
+  autoplot()
+
+
+modelo%>%
+  forecast(h=4)%>%
+  autoplot(vict)
+
+  
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+
+#b)Calcule um intervalo de previsão de 95% para a primeira previsão usando ^y±1,96s onde s é o desvio padrão dos resíduos. Compare seu intervalo com o intervalo produzido por R.
+
+modelo%>%
+  forecast(h=2)
+predicao_treino <- modelo%>%
+                forecast(new_data = vict)
+residuos <- predicao_treino$.mean - vict$Count
+
+modelo%>%
+  forecast(h=10)%>%
+  autoplot()
+
+modelo%>%
+  forecast(h=10)%>%
+  mutate(intervalo_baixo= .mean-(1.96*sd(residuos)),
+         intervalo_auto= .mean+(1.96*sd(residuos)))%>%
+  ggplot(aes(x=Month,y=.mean))+
+  geom_line()+
+  geom_ribbon(aes(ymin = intervalo_baixo, ymax = intervalo_auto), alpha = 0.2)
+
+
+
+
+```
+```{r}
+#2)Escreva sua própria função para implementar a suavização exponencial simples. A função deve receber argumentos y(a série temporal), alpha(o parâmetro de suavização α ) e level(o nível inicial ℓ0 ). Ele deve #retornar a previsão da próxima observação da série. Dá a mesma previsão que ETS()?
+
+
+simple_exponential_smoothing <- function(y, alpha, level) {
+  # Inicializa o primeiro nível com o nível inicial fornecido
+  forecast <- rep(NA, length(y))
+  forecast[1] <- level
+  # Aplica a suavização exponencial para cada observação na série
+  for (i in 2:length(y)) {
+    # Calcula o próximo nível previsto usando a equação de suavização exponencial
+    forecast[i] <- alpha * y[i-1] + (1 - alpha) * forecast[i-1]
+  }
+  # Retorna a previsão para a próxima observação na série
+  return(alpha * y[length(y)] + (1 - alpha) * forecast[length(y)])
+}
+
+print(simple_exponential_smoothing(vict$Count,0.011,15))
+
+modelo%>%
+  forecast(h=1)
+
+
+```
+```{r}
+#5)O conjunto de dados global_economycontém as exportações anuais de muitos países. Selecione um país para analisar.
+
+
+economia_brazil <- global_economy%>%
+  select(Exports)%>%
+  filter(Country == 'Brazil')
+```
+
+
+```{r}
+#a)Trace a série de Exportações e discuta as principais características dos dados.
+
+economia_brazil%>%
+  ggplot(aes(x=Year,y=Exports))+
+  geom_line()
+
+```
+
+
+```{r}
+#b)Use um modelo ETS(A,N,N) para prever a série e plotar as previsões.
+
+modelo_brazil <- economia_brazil%>%
+  model(ETS(Exports))
+
+modelo_brazil %>%
+  forecast(new_data=economia_brazil)%>%
+  autoplot(economia_brazil)
+```
+
+
+```{r}
+#c)Calcule os valores de RMSE para os dados de treinamento.
+
+modelo_brazil%>%
+  report()
+
+predicao_treino<- modelo_brazil %>%
+  forecast(new_data=economia_brazil)
+
+
+indicadores <-forecast::accuracy(
+  predicao_treino$.mean,
+  economia_brazil$Exports
+  )
+indicadores
+```
+
+
+```{r}
+#d)Compare os resultados com os de um modelo ETS(A,A,N). (Lembre-se de que o modelo de tendência usa um parâmetro a mais do que o modelo mais simples.) Discuta os méritos dos dois métodos de previsão para esse #conjunto de dados.
+
+modelo_aditive <- economia_brazil %>%
+  model(
+    multiplicative = ETS(Exports)
+  )
+modelo_aditive%>%
+  forecast(economia_brazil)
+```
+
+
+```{r}
+#6)Preveja o PIB chinês a partir do global_economyconjunto de dados usando um modelo ETS. Experimente as várias opções na ETS()função para ver o quanto as previsões mudam com tendência amortecida ou com uma #transformação Box-Cox. Tente desenvolver uma intuição do que cada um está fazendo com as previsões
+
+pib_china<-global_economy%>%
+   filter(Country == 'China')%>%
+   select(GDP)
+
+pib_china%>%
+  model(multiplicative = ETS(GDP),
+        AAN = ETS(GDP ~ error("A") + trend("A") + season("N")),
+        `Holt's method` = ETS(GDP ~ error("A") +
+                       trend("A") + season("N")),
+    `Damped Holt's method` = ETS(GDP ~ error("A") +
+                       trend("Ad", phi = 0.9) + season("N")),
+    SES = ETS(GDP ~ error("A") + trend("N") + season("N")),
+    Holt = ETS(GDP ~ error("A") + trend("A") + season("N")),
+    Damped = ETS(GDP ~ error("A") + trend("Ad") +
+                   season("N")))%>%
+   forecast(h=10)%>%
+   autoplot(pib_china)
+```
+
+
+```{r}
+#7) Encontre um modelo ETS para os dados de gás aus_productione preveja os próximos anos. Por que a sazonalidade multiplicativa é necessária aqui? Experimente tornar a tendência amortecida. Isso melhora as #previsões?20)
+
+gas <-aus_production%>%
+  select(Gas)
+
+modelos <-gas%>%
+  model(
+        AAN = ETS(Gas ~ error("A") + trend("A") + season("N")),
+        `Holt's method` = ETS(Gas ~ error("A") +
+                       trend("A") + season("N")),
+    `Damped Holt's method` = ETS(Gas ~ error("A") +
+                       trend("Ad", phi = 0.9) + season("N")),
+    SES = ETS(Gas ~ error("A") + trend("N") + season("N")),
+    Holt = ETS(Gas ~ error("A") + trend("A") + season("N")),
+    Damped = ETS(Gas ~ error("A") + trend("Ad") +
+                   season("N")),
+    multiplicative = ETS(Gas ~ error("M") + trend("A")+season("M")))
+   
+modelos%>%
+  forecast(h=20)%>%
+  autoplot(gas)
+
+modelos%>%
+  report()
+
+```
+```{r}
+#8)Lembre-se de seus dados de série temporal de varejo (do Exercício 8 na Seção 2.10 ).
+tute1 <- readr::read_csv("C:/Users/jefer/Documents/Livros/Previsão Princípios e Prática (3ª ed)/tute1.csv",show_col_types = FALSE)
+
+tute <- tute1 %>%
+  as_tsibble(index = Quarter, regular = TRUE)%>%
+  select(Quarter,Sales)
+
+tute%>%
+  ggplot(aes(Quarter,Sales))+
+  geom_line()
+
+
+
+
+```
+```{r}
+#10)Calcule o total de viagens domésticas noturnas pela Austrália a partir do tourismconjunto de dados.
+tourism
+
+tourism%>%
+  ggplot(aes(Quarter,Trips,fill=State))+
+  geom_line()
+
+
+```
+```{r}
+#b)Decomponha a série usando STL e obtenha os dados dessazonalizados.
+
+
+library(tsibble)
+
+model_torism <-tourism%>%
+  select(Trips)%>%
+  model(STL(Trips))
+  
+componentes <-model_torism%>%
+  components()
+trend_df <- tibble(index = tourism$Quarter, trend = componentes$trend)
+
+# Converter o data frame em um objeto tsibble
+trend_tsibble <- as_tsibble(trend_df, index = "index", key = "trend")
+
+
+trend_tsibble%>%
+  ggplot(aes(x=index,y=trend))+
+  geom_line()
+```
+
+
+```{r}
+
+
+
+
+```
+```{r}
+vic_food <- tsibbledata::aus_retail %>% 
+  filter(State == "Victoria", Industry == "Food retailing")
+
+  
+# Identify an appropriate decomposition
+vic_food %>% 
+  model(STL(log(Turnover) ~ season(window = Inf))) %>% 
+  components() %>% 
+  autoplot()
+my_dcmp_spec <- decomposition_model(
+  STL(log(Turnover) ~ season(window = Inf)),
+  ETS(season_adjust ~ season("N")), SNAIVE(season_year))
+  
+vic_food %>%
+  model(my_dcmp_spec) %>% 
+  forecast(h="5 years") %>% 
+  autoplot(vic_food)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

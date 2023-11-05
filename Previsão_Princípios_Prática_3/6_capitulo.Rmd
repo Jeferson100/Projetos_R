@@ -1,0 +1,460 @@
+---
+title: "6_capitulo"
+output: html_document
+date: "2023-02-13"
+---
+```{r setup, include=FALSE}
+#pacotes/dependÃªncias
+library(magrittr)       # CRAN v2.0.2
+library(readr)          # CRAN v2.1.2
+library(lubridate)      # CRAN v1.8.0
+library(dplyr)          # CRAN v1.0.8
+library(purrr)          # CRAN v0.3.4
+library(GetBCBData)     # CRAN v0.6
+library(ipeadatar)      # CRAN v0.1.6
+library(sidrar)         # CRAN v0.2.7
+library(gtrendsR)       # CRAN v1.5.0
+library(rbcb)           # CRAN v0.1.8
+library(tidyr)          # CRAN v1.2.0
+library(tsibble)        # CRAN v1.1.1
+library(stringr)        # CRAN v1.4.0
+library(forecast)       # CRAN v8.16
+library(timetk)         # CRAN v2.7.0
+library(caret)          # CRAN v6.0-91
+library(glmnet)         # CRAN v4.1-4
+library(plotly)         # CRAN v4.10.0
+library(ggplot2)        # CRAN v3.3.5
+library(feasts)         # CRAN v0.2.2
+library(fabletools)     # CRAN v0.3.2
+library(scales)         # CRAN v1.1.1
+library(ggtext)         # CRAN v0.1.1
+# Testado nas versÃµes R: 3.6.3 / 4.0.5 / 4.1.2 / 4.1.3 e 4.2.0
+library(purrr)
+library(readr)
+library(latex2exp)
+library(ggplot2)
+library(latex2exp)
+library(tinytex)
+library(latexpdf)
+library(ggplot2)
+library(GGally)
+library(forecast)
+##
+library(fable)
+library(forecast)
+library(fabletools)
+library(fpp3)
+
+##eSSE COMANDO RETIRA A NOTACAO CIENTIFICA
+options(scipen = 999)
+library(tsibble)
+library(tsibbledata)
+jan14_vic_elec <- vic_elec %>%
+  filter(yearmonth(Time) == yearmonth("2014 Jan")) %>%
+  index_by(Date = as_date(Time)) %>%
+  summarise(
+    Demand = sum(Demand),
+    Temperature = max(Temperature)
+  )
+```
+
+##A demanda de eletricidade por meia hora para Victoria, Austrália, está contida em vic_elec. Extraia a demanda de eletricidade de janeiro de 2014 e agregue esses dados diariamente com demandas totais diárias e temperaturas máximas.
+
+```{r}
+vic_elec_filtro <-vic_elec %>%
+  dplyr::filter(as.Date(Time) >= as.Date("2012-01-01"), as.Date(Time) <= as.Date("2012-01-15"))%>%
+  index_by(Date = as.Date(Date))%>%
+  summarise(
+    demanda = sum(Demand),
+    temperatura_maxima = max(Temperature)
+  )
+
+```
+
+
+##a)Plote os dados e encontre o modelo de regressão para Demanda com temperatura como variável preditora. Por que existe uma relação positiva?
+```{r}
+vic_elec_filtro%>%
+            ggplot(aes(temperatura_maxima,demanda))+
+           labs(y = "Demanda Total",
+            x = "Temperatura maxima)") +
+            geom_point(color='black')+
+            geom_smooth(method = "lm", se = FALSE)
+```
+```{r}
+modelo_regressao <- vic_elec_filtro %>%model(TSLM(demanda ~ temperatura_maxima))
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+modelo_regressao%>%
+  report()
+```
+
+## b)Produzir uma parcela residual. O modelo é adequado? Existem outliers ou observações influentes?
+
+```{r}
+modelo_regressao%>%gg_tsresiduals()
+```
+
+
+```{r}
+#Gráficos residuais em relação aos valores ajustados
+#Um gráfico dos resíduos em relação aos valores ajustados também não deve mostrar nenhum padrão. Se for observado um padrão, pode haver “heteroscedasticidade” nos erros, o que significa que a variância dos #resíduos pode não ser constante. Se esse problema ocorrer, pode ser necessária uma transformação da variável de previsão, como logaritmo ou raiz quadrada (consulte a Seção 3.1 ).
+augment(modelo_regressao)%>%ggplot(aes(x = .fitted, y = .resid)) +
+   geom_point() + labs(x = "Fitted", y = "Residuals")
+```
+
+##c)Use o modelo para prever a demanda de eletricidade que você esperaria para o dia seguinte se a temperatura máxima fosse 15∘C e compare com a previsão se a temperatura máxima foi 35∘C. Você acredita nessas previsões? O seguinte código R irá ajudá-lo a começar:
+```{r}
+nova_data <- c(15)
+
+vic_elec_filtro %>%
+  model(TSLM(demanda ~ temperatura_maxima))%>%
+  forecast(
+    new_data(vic_elec_filtro, 2) %>%
+      mutate(temperatura_maxima = c(15,35))
+  ) %>%
+  autoplot(vic_elec_filtro)
+
+
+
+```
+```{r}
+#Traçar Demanda vs Temperatura para todos os dados disponíveis vic_elecagregados à demanda total diária e temperatura máxima. O que isso diz sobre o seu modelo?
+
+vic_elec_filtro %>%
+  model(TSLM(demanda ~ temperatura_maxima))%>%
+  forecast(new_data=vic_elec_filtro) %>%
+  autoplot(vic_elec_filtro)
+```
+
+
+```{r}
+vic_elec_filtro %>%
+  model(TSLM(demanda ~ temperatura_maxima)) %>%
+  forecast(new_data = vic_elec_filtro) %>%
+  autoplot(vic_elec_filtro) +
+  labs(x = "Data", y = "Demanda de Energia", title = "Demanda de Energia e Temperatura Máxima") +
+  scale_color_manual(values = c("blue", "red"), 
+                     labels = c("Demanda de Energia", "Temperatura Máxima"))
+
+```
+##2)O conjunto de dados olympic_runningcontém os tempos de vitória (em segundos) em cada sprint dos Jogos Olímpicos, eventos de pista de meia distância e longa distância de 1896 a 2016.
+```{r}
+#a)Traçar o tempo de vitória contra o ano para cada evento. Descreva as principais características do enredo.
+
+unique(olympic_running$Length)
+olympic_running%>%
+  filter(Length == c(100,200))%>%
+  autoplot()
+olympic_running%>%
+  autoplot()
+
+```
+```{r}
+##Ajuste uma linha de regressão aos dados de cada evento. Obviamente, os tempos de vitória têm diminuído, mas a que taxa média por ano?
+
+olympic_running%>%
+  filter(Length == 100)%>%
+  ggplot(aes(Year,Time))+
+           labs(y = "Tempo",
+            x = "Ano") +
+            geom_point(color='black')+
+            geom_smooth(method = "lm", se = FALSE)
+  
+
+```
+```{r}
+modelo_100 <-olympic_running%>%
+  filter(Length == 100)%>%
+  model(TSLM(Time ~ Year))
+
+modelo_100%>%
+  forecast(new_data = olympic_running) %>%
+  autoplot(olympic_running)
+
+```
+```{r}
+modelo_100%>% 
+  filter(Sex == 'men')%>%
+  report()
+modelo_100%>% 
+  filter(Sex == 'women')%>%
+  report()
+```
+```{r}
+#Plote os resíduos em relação ao ano. O que isso indica sobre a adequação das linhas ajustadas?
+modelo_100 %>%
+    filter(Sex == 'men')%>%
+    gg_tsresiduals()
+
+modelo_100 %>%
+    filter(Sex == 'women')%>%
+    gg_tsresiduals()
+```
+
+```
+```{r}
+##Plote os resíduos em relação ao ano. O que isso indica sobre a adequação das linhas ajustadas?
+library(tsibble)
+
+olympic_running_ts <- as_tsibble(olympic_running, index = Year)
+residuals_ts <- as_tsibble(residuals(modelo_100), index = Year)
+
+merged_ts <- left_join(olympic_running_ts, residuals_ts)
+
+merged_ts%>%
+  tidyr::drop_na()%>%
+  ggplot(aes(x = Year, y = .resid)) +
+  geom_point() 
+
+
+```
+
+```{r}
+###d)Preveja o tempo de vitória para cada corrida nas Olimpíadas de 2020. Dê um intervalo de previsão para suas previsões. Que suposições você fez nesses cálculos?
+
+
+
+olympic_running%>%
+  filter(Length==100)%>%
+  model(TSLM(Time ~ Year))%>%
+  forecast(
+    new_data(olympic_running, 1) %>%
+      mutate(Year= 2020)
+  ) %>%
+  autoplot(olympic_running)
+
+
+```
+
+
+
+#4)O conjunto de dados souvenirsdiz respeito às vendas mensais de uma loja que abriu em janeiro de 1987 e vende presentes, lembranças e novidades. A loja está situada no cais de uma cidade balneária em 
+```{r}
+###a)Produza um gráfico de tempo dos dados e descreva os padrões no gráfico. Identifique quaisquer flutuações incomuns ou inesperadas na série temporal.
+
+souvenirs%>%
+  ggplot(aes(x=Month,y=Sales))+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE)
+
+``` 
+
+
+
+```{r}
+#Explique por que é necessário obter logaritmos desses dados antes de ajustar um modelo.
+fit_vendas <- souvenirs %>%
+  model(
+    linear = TSLM(Sales ~ Month),
+    exponential = TSLM(log(Sales) ~ Month))
+fc_vendas <- fit_vendas %>% forecast(h = 10)
+
+souvenirs %>%
+  autoplot(Sales) +
+  geom_line(data = fitted(fit_vendas),
+            aes(y = .fitted, colour = .model)) +
+  autolayer(fc_vendas, alpha = 0.5, level = 95) +
+  labs(y = "Valores de vendas",
+      x="Anos",
+       title = "Vendas mensais")
+```
+
+```{r}
+#Plote os resíduos contra o tempo e contra os valores ajustados. Esses gráficos revelam algum problema com o modelo?
+
+residuals_ts <- as_tsibble(residuals(fit_vendas), index = Month)
+
+#residuos contra o tempo
+residuals_ts%>%
+  ggplot(aes(x = Month, y = .resid)) +
+  geom_point() 
+
+#Residuos contra os valores ajustados
+augment(fit_vendas) %>%
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() + labs(x = "Fitted", y = "Residuals")
+```
+
+```{r}
+#Faça boxplots dos resíduos para cada mês. Isso revela algum problema com o modelo?
+
+
+residuals_ts %>% 
+  filter(grepl("jan", Month))%>%
+  ggplot(aes(y=.resid))+
+  geom_boxplot()+
+  labs(y = "Residuos",
+       title = "Residuos nos valores de janeiro")
+       
+residuals_ts %>% 
+  filter(grepl("fev", Month))%>%
+  ggplot(aes(y=.resid))+
+  geom_boxplot()+
+  labs(y = "Residuos",
+       title = "Residuos nos valores de fevereiro")
+       
+residuals_ts %>% 
+  filter(grepl("mar", Month))%>%
+  ggplot(aes(y=.resid))+
+  geom_boxplot()+
+  labs(y = "Residuos",
+       title = "Residuos nos valores de marco")
+       
+residuals_ts %>% 
+  filter(grepl("abr", Month))%>%
+  ggplot(aes(y=.resid))+
+  geom_boxplot()+
+  labs(y = "Residuos",
+       title = "Residuos nos valores de abril")
+       
+residuals_ts %>% 
+  filter(grepl("mai", Month))%>%
+  ggplot(aes(y=.resid))+
+  geom_boxplot()+
+  labs(y = "Residuos",
+       title = "Residuos nos valores de maio")
+
+residuals_ts %>% 
+  filter(grepl("jun", Month))%>%
+  ggplot(aes(y=.resid))+
+  geom_boxplot()+
+  labs(y = "Residuos",
+       title = "Residuos nos valores de junho")
+    
+```
+
+```{r}
+#f)O que os valores dos coeficientes dizem sobre cada variável?
+
+report(fit_vendas%>%
+        select(linear))
+
+report(fit_vendas%>%
+        select(exponential))
+
+```
+
+```{r}
+#g)O que o teste Ljung-Box informa sobre o seu modelo?
+augment(fit_vendas) %>%
+  features(.innov, ljung_box, lag = 10)
+
+
+```
+
+#5)A us_gasolinesérie consiste em dados semanais de fornecimento de gasolina para motores acabados dos EUA, de 2 de fevereiro de 1991 a 20 de janeiro de 2017. As unidades estão em “milhões de barris por dia”. #Considere apenas os dados até o final de 2004.
+```{r}
+
+dados_2004 <- us_gasoline %>%
+  filter(Week <= ymd('2004-12-31') + weeks(1))
+```
+
+```{r}
+#a)Ajuste uma regressão harmônica com tendência aos dados. Experimente mudar os termos numéricos de Fourier. Faça um gráfico da gasolina observada e dos valores ajustados e comente o que você vê.
+
+gasolina<- dados_2004 %>%
+  model(TSLM(Barrels ~ Week + fourier(K = 4)))
+report(gasolina)
+
+gasolina%>%
+  forecast(new_data = dados_2004)%>%
+  autoplot(dados_2004)
+
+```
+
+```{r}
+#b)Selecione o número apropriado de termos de Fourier para incluir minimizando o valor AICc ou CV.
+gasolina<- dados_2004 %>%
+  model(TSLM(Barrels ~ Week + fourier(K = 7)))
+glance(gasolina) %>%
+  select(adj_r_squared, CV, AIC, AICc, BIC)
+gasolina%>%
+  forecast(new_data = dados_2004)%>%
+  autoplot(dados_2004)
+
+```
+
+```{r}
+#c)Trace os resíduos do modelo final usando a gg_tsresiduals()função e comente sobre eles. Use um teste Ljung-Box para verificar a autocorrelação residual.
+gasolina%>%
+  gg_tsresiduals()
+
+```
+
+```{r}
+#d)Gere previsões de dados para o próximo ano e plote-as juntamente com os dados reais de 2005. Comente as previsões.
+
+dados_2005 <-us_gasoline %>%
+  filter(Week >= ymd('2004-12-31') + weeks(1),Week <= ymd('2006-01-01') + weeks(1))
+  
+gasolina%>%
+  forecast(new_data = dados_2005)%>%
+  autoplot(dados_2005)+
+  labs(title = "Previsão de consumo de gasolina nos EUA",
+       x = "Ano",
+       y = "Milhões de barris") 
+
+
+```
+
+#6)A população anual do Afeganistão está disponível no global_economyconjunto de dados.
+```{r}
+#a)Plote os dados e comente suas características. Você pode observar o efeito da guerra soviético-afegã?
+
+
+afeg <-global_economy%>%
+  filter(Country == 'Afghanistan')
+
+afeg%>%
+  ggplot(aes(Year,Population))+
+  geom_line(size=1,color='blue')+
+  ggplot2::labs(
+    title = 'Population dos AFEGANISTAO',
+    x= 'Population',
+    y='ANO',
+    caption = 'Conjunto de dados Global Economy'
+  )
+
+
+```
+
+```{r}
+#b)Ajuste um modelo de tendência linear e compare-o com um modelo de tendência linear por partes com nós em 1980 e 1989.
+dados_80_89 <-afeg%>%
+  filter(Year >= 1980,Year <= 1989)
+  
+afeganistao_completo<- afeg %>%
+  model(TSLM(Population ~ Year))
+
+afeganistao_80<-dados_80_89%>%
+  model(TSLM(Population ~ Year))
+  
+
+
+```
+
+```{r}
+#c)Gere previsões a partir desses dois modelos para os cinco anos após o término dos dados e comente os resultados.
+
+data_80 <- c(1970,1971,1972,1973)
+data_todas <- c(2018,2019,2020,2021,2022)
+
+
+afeganistao_completo%>%
+  forecast(h= 5)%>%
+  autoplot(afeg)
+
+afeganistao_80%>%
+  forecast(h = 5)%>%
+  autoplot(dados_80_89)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
