@@ -25,7 +25,7 @@ Esperamos que você encontre inspiração e aprendizado por meio destes projetos
 
 Divirta-se explorando e desenvolvendo projetos em R!
 
-![R Logo](link_para_imagem_do_logo_R.png)
+![R Logo]([link_para_imagem_do_logo_R.png](https://www.r-project.org/Rlogo.png)https://www.r-project.org/Rlogo.png)
 
 
 
