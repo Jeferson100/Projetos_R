@@ -26,4 +26,4 @@ Comece sua jornada de aprendizado e aprimoramento em previsão de séries tempor
 
 Divirta-se resolvendo os exercícios e aprofundando seus conhecimentos!
 
-![Capa do Livro](link_para_imagem_da_capa.png)
+![Capa do Livro](https://otexts.com/fpp3/figs/fpp3_front_cover.jpg)
