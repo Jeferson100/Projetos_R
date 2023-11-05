@@ -2,7 +2,7 @@
 
 Este repositório contém a resolução dos exercícios apresentados no livro "Forecasting: Principles and Practice (3rd ed)" de Rob J Hyndman e George Athanasopoulos da Monash University, Austrália. O livro é uma referência amplamente reconhecida e valiosa para a previsão de séries temporais e a análise de dados.
 
-**Link para o livro:** [Forecasting: Principles and Practice (3rd ed)](https://otexts.com/fpp3/)
+
 
 ## Objetivo
 
@@ -21,7 +21,6 @@ Este repositório é uma comunidade aberta de aprendizado e colaboração. Você
 ## Recursos Adicionais
 
 - [Site Oficial do Livro](https://otexts.com/fpp3/)
-- [Repositório GitHub dos Autores](https://github.com/robjhyndman/fpp3)
 
 Comece sua jornada de aprendizado e aprimoramento em previsão de séries temporais resolvendo os exercícios deste livro e compartilhando suas soluções. Juntos, podemos fortalecer nossa compreensão das práticas de previsão e análise de dados.
 
